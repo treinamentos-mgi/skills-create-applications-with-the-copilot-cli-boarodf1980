@@ -2,13 +2,16 @@
 /**
  * Calculadora CLI.
  *
- * Uso: node src/calculator.js <operação> <a> <b>
+ * Uso: node src/calculator.js <operação> <a> [b]
  *
  * Operações suportadas:
  *   addition - adição (a + b)
  *   subtraction - subtração (a - b)
  *   multiplication - multiplicação (a * b)
  *   division - divisão (a / b); divisão por zero gera erro
+ *   modulo - resto da divisão (a % b); módulo por zero gera erro
+ *   power - potenciação (base ^ expoente)
+ *   squareRoot - raiz quadrada (um operando); número negativo gera erro
  *
  * Exemplo: node src/calculator.js addition 2 3  // imprime 5
  */
@@ -28,27 +31,51 @@ const division = (a, b) => {
   return a / b;
 };
 
-const operations = { addition, subtraction, multiplication, division };
+// Módulo: resto da divisão de a por b (lança erro se b for zero)
+const modulo = (a, b) => {
+  if (b === 0) throw new Error('Módulo por zero não é permitido.');
+  return a % b;
+};
+
+// Potenciação: base elevada ao expoente
+const power = (base, exponent) => base ** exponent;
+
+// Raiz quadrada (lança erro se n for negativo)
+const squareRoot = (n) => {
+  if (n < 0) throw new Error('Raiz quadrada de número negativo não é permitida.');
+  return Math.sqrt(n);
+};
+
+const operations = {
+  addition,
+  subtraction,
+  multiplication,
+  division,
+  modulo,
+  power,
+  squareRoot,
+};
 
 function main(args) {
-  const [op, rawA, rawB] = args;
+  const [op, ...rawOperands] = args;
 
-  if (args.length !== 3 || !Object.hasOwn(operations, op)) {
+  // Quantidade de operandos esperada: a função de cada operação define a aridade
+  if (!Object.hasOwn(operations, op) || rawOperands.length !== operations[op].length) {
     console.error(
-      'Uso: node src/calculator.js <addition|subtraction|multiplication|division> <a> <b>'
+      'Uso: node src/calculator.js <addition|subtraction|multiplication|division|modulo|power> <a> <b>\n' +
+        '     node src/calculator.js squareRoot <n>'
     );
     return 1;
   }
 
-  const a = Number(rawA);
-  const b = Number(rawB);
-  if (rawA.trim() === '' || rawB.trim() === '' || Number.isNaN(a) || Number.isNaN(b)) {
+  const operands = rawOperands.map((raw) => (raw.trim() === '' ? NaN : Number(raw)));
+  if (operands.some(Number.isNaN)) {
     console.error('Erro: os operandos devem ser números válidos.');
     return 1;
   }
 
   try {
-    console.log(operations[op](a, b));
+    console.log(operations[op](...operands));
     return 0;
   } catch (err) {
     console.error(`Erro: ${err.message}`);
@@ -60,4 +87,12 @@ if (require.main === module) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-module.exports = { addition, subtraction, multiplication, division };
+module.exports = {
+  addition,
+  subtraction,
+  multiplication,
+  division,
+  modulo,
+  power,
+  squareRoot,
+};

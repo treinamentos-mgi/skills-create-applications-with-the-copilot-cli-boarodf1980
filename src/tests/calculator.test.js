@@ -1,6 +1,14 @@
 const { spawnSync } = require('child_process');
 const path = require('path');
-const { addition, subtraction, multiplication, division } = require('../calculator');
+const {
+  addition,
+  subtraction,
+  multiplication,
+  division,
+  modulo,
+  power,
+  squareRoot,
+} = require('../calculator');
 
 const CLI = path.join(__dirname, '..', 'calculator.js');
 const run = (...args) => spawnSync('node', [CLI, ...args], { encoding: 'utf8' });
@@ -40,6 +48,36 @@ describe('division', () => {
   });
 });
 
+describe('modulo', () => {
+  test('5 % 2 = 1', () => expect(modulo(5, 2)).toBe(1));
+  test('divisão exata retorna 0', () => expect(modulo(10, 5)).toBe(0));
+  test('dividendo menor que divisor', () => expect(modulo(2, 5)).toBe(2));
+  test('dividendo negativo mantém o sinal', () => expect(modulo(-5, 3)).toBe(-2));
+  test('decimais', () => expect(modulo(5.5, 2)).toBe(1.5));
+  test('módulo por zero lança erro', () => {
+    expect(() => modulo(5, 0)).toThrow('Módulo por zero');
+  });
+});
+
+describe('power', () => {
+  test('2 ^ 3 = 8', () => expect(power(2, 3)).toBe(8));
+  test('expoente zero retorna 1', () => expect(power(5, 0)).toBe(1));
+  test('zero elevado a zero retorna 1', () => expect(power(0, 0)).toBe(1));
+  test('expoente negativo', () => expect(power(2, -2)).toBe(0.25));
+  test('base negativa', () => expect(power(-2, 3)).toBe(-8));
+  test('expoente fracionário (raiz)', () => expect(power(9, 0.5)).toBe(3));
+});
+
+describe('squareRoot', () => {
+  test('√16 = 4', () => expect(squareRoot(16)).toBe(4));
+  test('√0 = 0', () => expect(squareRoot(0)).toBe(0));
+  test('√1 = 1', () => expect(squareRoot(1)).toBe(1));
+  test('não quadrado perfeito', () => expect(squareRoot(2)).toBeCloseTo(1.41421356, 7));
+  test('número negativo lança erro', () => {
+    expect(() => squareRoot(-4)).toThrow('número negativo');
+  });
+});
+
 describe('CLI', () => {
   test.each([
     [['addition', '2', '3'], '5'],
@@ -50,6 +88,32 @@ describe('CLI', () => {
     const r = run(...args);
     expect(r.status).toBe(0);
     expect(r.stdout.trim()).toBe(expected);
+  });
+
+  test.each([
+    [['modulo', '5', '2'], '1'],
+    [['power', '2', '3'], '8'],
+    [['squareRoot', '16'], '4'],
+  ])('%j imprime %s', (args, expected) => {
+    const r = run(...args);
+    expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toBe(expected);
+  });
+
+  test('módulo por zero retorna erro', () => {
+    const r = run('modulo', '5', '0');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/Módulo por zero/);
+  });
+
+  test('raiz quadrada de negativo retorna erro', () => {
+    const r = run('squareRoot', '-4');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/número negativo/);
+  });
+
+  test('squareRoot com dois operandos é rejeitado', () => {
+    expect(run('squareRoot', '4', '2').status).toBe(1);
   });
 
   test('divisão por zero retorna erro', () => {
@@ -69,7 +133,7 @@ describe('CLI', () => {
   });
 
   test('operação desconhecida', () => {
-    expect(run('power', '2', '3').status).toBe(1);
+    expect(run('factorial', '2', '3').status).toBe(1);
   });
 
   test('operação herdada de Object (toString) é rejeitada', () => {
