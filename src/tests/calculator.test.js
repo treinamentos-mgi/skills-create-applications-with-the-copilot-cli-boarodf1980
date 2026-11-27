@@ -1,6 +1,8 @@
 const { spawnSync } = require('child_process');
 const path = require('path');
-const { addition, subtraction, multiplication, division } = require('../calculator');
+const {
+  addition, subtraction, multiplication, division, modulo, exponentiation, squareRoot,
+} = require('../calculator');
 
 const CLI = path.join(__dirname, '..', 'calculator.js');
 const run = (...args) => spawnSync('node', [CLI, ...args], { encoding: 'utf8' });
@@ -40,12 +42,66 @@ describe('division', () => {
   });
 });
 
+describe('modulo', () => {
+  test.each([
+    [10, 3, 1], [-10, 3, -1], [10, -3, 1], [0, 3, 0], [5.5, 2, 1.5],
+  ])('%s %% %s = %s', (a, b, expected) => {
+    expect(modulo(a, b)).toBe(expected);
+  });
+
+  test.each([0, -0])('divisor %s lança erro', b => {
+    expect(() => modulo(1, b)).toThrow('Módulo por zero');
+  });
+});
+
+describe('exponentiation', () => {
+  test.each([
+    [2, 3, 8], [-2, 3, -8], [-2, 2, 4], [2, -2, 0.25],
+    [9, 0.5, 3], [5, 0, 1], [0, 2, 0], [0, 0, 1],
+  ])('%s ** %s = %s', (a, b, expected) => {
+    expect(exponentiation(a, b)).toBe(expected);
+  });
+
+  test.each([[0, -1], [-4, 0.5], [10, 1000]])(
+    '%s ** %s sem resultado real finito lança erro', (a, b) => {
+      expect(() => exponentiation(a, b)).toThrow('número real finito');
+    }
+  );
+});
+
+describe('squareRoot', () => {
+  test.each([[9, 3], [0, 0], [0.25, 0.5], [2, Math.SQRT2]])(
+    'raiz de %s = %s', (a, expected) => {
+      expect(squareRoot(a)).toBeCloseTo(expected);
+    }
+  );
+
+  test('número negativo lança erro', () => {
+    expect(() => squareRoot(-1)).toThrow('número negativo');
+  });
+});
+
+describe('validação das novas operações', () => {
+  test.each([NaN, Infinity, -Infinity, '2', undefined, null])(
+    'operando inválido %s lança erro', value => {
+      expect(() => modulo(value, 2)).toThrow('números válidos');
+      expect(() => modulo(2, value)).toThrow('números válidos');
+      expect(() => exponentiation(value, 2)).toThrow('números válidos');
+      expect(() => exponentiation(2, value)).toThrow('números válidos');
+      expect(() => squareRoot(value)).toThrow('números válidos');
+    }
+  );
+});
+
 describe('CLI', () => {
   test.each([
     [['addition', '2', '3'], '5'],
     [['subtraction', '10', '4'], '6'],
     [['multiplication', '45', '2'], '90'],
     [['division', '20', '5'], '4'],
+    [['modulo', '10', '3'], '1'],
+    [['exponentiation', '2', '3'], '8'],
+    [['squareRoot', '9'], '3'],
   ])('%j imprime %s', (args, expected) => {
     const r = run(...args);
     expect(r.status).toBe(0);
@@ -56,6 +112,29 @@ describe('CLI', () => {
     const r = run('division', '1', '0');
     expect(r.status).toBe(1);
     expect(r.stderr).toMatch(/Divisão por zero/);
+  });
+
+  test.each([
+    [['modulo', '1', '0'], /Módulo por zero/],
+    [['exponentiation', '-4', '0.5'], /número real finito/],
+    [['exponentiation', '0', '-1'], /número real finito/],
+    [['exponentiation', '10', '1000'], /número real finito/],
+    [['squareRoot', '-1'], /número negativo/],
+    [['squareRoot', 'x'], /números válidos/],
+    [['squareRoot', ' '], /números válidos/],
+    [['squareRoot', 'Infinity'], /números válidos/],
+    [['modulo', 'NaN', '2'], /números válidos/],
+    [['exponentiation', '2', '1e309'], /números válidos/],
+    [['addition', 'Infinity', '2'], /números válidos/],
+    [['squareRoot'], /Uso:/],
+    [['squareRoot', '9', '2'], /Uso:/],
+    [['modulo', '2'], /Uso:/],
+    [['exponentiation', '2'], /Uso:/],
+  ])('%j retorna erro', (args, message) => {
+    const r = run(...args);
+    expect(r.status).toBe(1);
+    expect(r.stdout).toBe('');
+    expect(r.stderr).toMatch(message);
   });
 
   test('operando não numérico', () => {
